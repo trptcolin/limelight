@@ -7,6 +7,7 @@ import limelight.util.Debug;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.KeyListener;
 
 class LimelightContentPane extends JPanel
 {
@@ -23,5 +24,11 @@ class LimelightContentPane extends JPanel
     {
       frame.getRoot().addDirtyRegion(frame.getRoot().getPanel().getAbsoluteBounds());
     }
+  }
+
+  @Override
+  public void addKeyListener(KeyListener l)
+  {
+    frame.addKeyListener(l);
   }
 }
