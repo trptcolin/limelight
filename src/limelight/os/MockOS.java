@@ -3,6 +3,8 @@
 
 package limelight.os;
 
+import java.awt.event.KeyEvent;
+
 public class MockOS extends OS
 {
   public boolean systemPropertiesConfigured;
@@ -22,5 +24,11 @@ public class MockOS extends OS
   public void configureSystemProperties()
   {
     systemPropertiesConfigured = true;
+  }
+
+  @Override
+  public boolean hasPrimaryModifierDown(KeyEvent e)
+  {
+    return false;
   }
 }

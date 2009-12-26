@@ -3,6 +3,8 @@
 
 package limelight.os;
 
+import java.awt.event.KeyEvent;
+
 public class UnsupportedOS extends OS
 {
   protected void turnOnKioskMode()
@@ -19,5 +21,11 @@ public class UnsupportedOS extends OS
 
   public void configureSystemProperties()
   {
+  }
+
+  @Override
+  public boolean hasPrimaryModifierDown(KeyEvent e)
+  {
+    return false;
   }
 }

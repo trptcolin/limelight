@@ -4,6 +4,8 @@
 package limelight.os.win32;
 import limelight.os.OS;
 
+import java.awt.event.KeyEvent;
+
 public class Win32OS extends OS
 {
   private int hookThreadId;
@@ -13,6 +15,12 @@ public class Win32OS extends OS
   public String dataRoot()
   {
     return System.getProperty("user.home") + "/Application Data/Limelight";
+  }
+
+  @Override
+  public boolean hasPrimaryModifierDown(KeyEvent e)
+  {
+    return e.isControlDown();
   }
 
   protected void turnOnKioskMode()

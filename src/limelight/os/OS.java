@@ -6,6 +6,7 @@ package limelight.os;
 import limelight.Context;
 import limelight.io.TempDirectory;
 
+import java.awt.event.KeyEvent;
 import java.io.IOException;
 
 public abstract class OS
@@ -55,4 +56,6 @@ public abstract class OS
   {
     this.runtime = runtime;
   }
+
+  public abstract boolean hasPrimaryModifierDown(KeyEvent e);
 }

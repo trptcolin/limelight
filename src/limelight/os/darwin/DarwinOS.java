@@ -8,6 +8,7 @@ import limelight.Context;
 import limelight.util.StringUtil;
 import com.sun.jna.ptr.IntByReference;
 
+import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.IOException;
 
@@ -72,6 +73,12 @@ public class DarwinOS extends OS
       applicationAdapter.openProduction(productionPath);
     else
       Context.instance().studio.open(productionPath);
+  }
+
+  @Override
+  public boolean hasPrimaryModifierDown(KeyEvent e)
+  {
+    return e.isMetaDown();
   }
 
   public boolean isRunningAsApp()

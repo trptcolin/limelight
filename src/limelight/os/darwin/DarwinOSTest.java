@@ -9,6 +9,9 @@ import limelight.util.StringUtil;
 import limelight.os.MockRuntimeExecution;
 import limelight.ui.api.MockStudio;
 
+import java.awt.Panel;
+import java.awt.event.KeyEvent;
+
 public class DarwinOSTest extends TestCase
 {
   private DarwinOS os;
@@ -94,4 +97,12 @@ public class DarwinOSTest extends TestCase
     assertEquals("open http://www.google.com", StringUtil.join(" ", mockSystemExecution.command));
   }
 
+  public void testHasPrimaryModifierDown() throws Exception
+  {
+    KeyEvent e1 = new KeyEvent(new Panel(), 0, 0, KeyEvent.META_DOWN_MASK, 'c', 'c');
+    assertEquals(true, os.hasPrimaryModifierDown(e1));
+
+    KeyEvent e2 = new KeyEvent(new Panel(), 0, 0, KeyEvent.CTRL_DOWN_MASK, 'c', 'c');
+    assertEquals(false, os.hasPrimaryModifierDown(e2));
+  }
 }

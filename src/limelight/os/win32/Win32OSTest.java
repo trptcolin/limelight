@@ -9,6 +9,9 @@ import limelight.Context;
 import limelight.util.StringUtil;
 import limelight.os.MockRuntimeExecution;
 
+import java.awt.*;
+import java.awt.event.KeyEvent;
+
 public class Win32OSTest extends TestCase
 {
   private Win32OS os;
@@ -52,5 +55,14 @@ public class Win32OSTest extends TestCase
     os.launch("http://www.google.com");
 
     assertEquals("cmd.exe /C start http://www.google.com", StringUtil.join(" ", mockSystemExecution.command));
+  }
+
+  public void testHasPrimaryModifierDown() throws Exception
+  {
+    KeyEvent e1 = new KeyEvent(new Panel(), 0, 0, KeyEvent.META_DOWN_MASK, 'c', 'c');
+    assertEquals(false, os.hasPrimaryModifierDown(e1));
+
+    KeyEvent e2 = new KeyEvent(new Panel(), 0, 0, KeyEvent.CTRL_DOWN_MASK, 'c', 'c');
+    assertEquals(true, os.hasPrimaryModifierDown(e2));
   }
 }
