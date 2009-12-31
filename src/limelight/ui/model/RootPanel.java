@@ -149,6 +149,11 @@ public class RootPanel implements Panel
     return this;
   }
 
+  public Cursor getCursor()
+  {
+    return contentPane.getCursor();
+  }
+
   public void setCursor(Cursor cursor)
   {
     contentPane.setCursor(cursor);

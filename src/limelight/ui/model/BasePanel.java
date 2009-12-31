@@ -3,11 +3,11 @@
 
 package limelight.ui.model;
 
+import limelight.Context;
 import limelight.styles.Style;
 import limelight.ui.Panel;
 import limelight.ui.model.inputs.ScrollBarPanel;
 import limelight.util.Box;
-import limelight.util.Debug;
 
 import java.awt.*;
 import java.awt.event.*;
@@ -520,5 +520,12 @@ public abstract class BasePanel implements Panel
       for(Panel child : children)
         child.consumableAreaChanged();
     }
+  }
+
+  public boolean isCopyKeyEvent(KeyEvent e)
+  {
+    boolean hasPrimaryModifierDown = Context.instance().os.hasPrimaryModifierDown(e);
+    char keyChar = e.getKeyChar();
+    return hasPrimaryModifierDown && (keyChar == 'c' || keyChar == 'x');
   }
 }

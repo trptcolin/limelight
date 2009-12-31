@@ -276,6 +276,13 @@ public class PropPanel extends BasePanel implements PropablePanel, PaintablePane
 
   public void keyPressed(KeyEvent e)
   {
+    for (Panel child : getChildren())
+    {
+      if (child instanceof TextPanel)
+      {
+          child.keyPressed(e);
+      }
+    }
     getProp().key_pressed(e);
   }
 

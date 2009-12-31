@@ -3,9 +3,7 @@
 
 package limelight.ui.model;
 
-import limelight.styles.abstrstyling.StyleAttribute;
-import limelight.styles.compiling.ColorAttributeCompiler;
-import limelight.ui.Panel;
+import limelight.os.MockOS;
 import limelight.ui.api.MockProp;
 import limelight.ui.*;
 import limelight.ui.model.inputs.ScrollBarPanel;
@@ -291,6 +289,22 @@ public class PropPanelTest extends TestCase
     panel.keyPressed(event);
 
     assertSame(event, prop.pressedKey);
+  }
+
+  public void testKeyPressedForwardedToTextPanel() throws Exception
+  {
+    MockOS os = new MockOS();
+    Context.instance().os = os;
+    KeyEvent event = new KeyEvent(new JPanel(), 1, 2, 3, 4, 'a');
+
+    panel.keyPressed(event);
+
+    assertEquals(false, os.wasPrimaryModifierDownChecked());
+
+    panel.setText("foo");
+    panel.keyPressed(event);
+
+    assertEquals(true, os.wasPrimaryModifierDownChecked());
   }
 
   public void testKeyTypedEvent() throws Exception

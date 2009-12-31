@@ -257,4 +257,16 @@ public class RootPanelTest extends TestCase
     root.setPanel(child);
     assertNotNull(root.getImageCache());
   }
+
+  public void testCursorAccess() throws Exception
+  {
+    assertEquals(root.getContentPane().getCursor(), root.getCursor());
+
+    Cursor cursor = new Cursor(Cursor.WAIT_CURSOR);
+
+    root.setCursor(cursor);
+
+    assertEquals(cursor, root.getCursor());
+    assertEquals(cursor, root.getContentPane().getCursor());
+  }
 }

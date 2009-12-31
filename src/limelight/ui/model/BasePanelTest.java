@@ -4,6 +4,9 @@
 package limelight.ui.model;
 
 import junit.framework.TestCase;
+import limelight.Context;
+import limelight.os.MockOS;
+import limelight.os.OS;
 import limelight.styles.Style;
 import limelight.styles.FlatStyle;
 import limelight.ui.MockPanel;
@@ -13,6 +16,7 @@ import limelight.util.Box;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -705,7 +709,7 @@ public class BasePanelTest extends TestCase
     assertEquals(panel, MockLayout.instance.lastPanelProcessed);
   }
 
-  public void testOveridingLayouts() throws Exception
+  public void testOverridingLayouts() throws Exception
   {
     panel.resetLayout();
     MockLayout.instance.lastPanelProcessed = null;
@@ -716,6 +720,27 @@ public class BasePanelTest extends TestCase
 
     assertEquals(panel, MockLayout.alwaysOverides.lastPanelProcessed);
     assertEquals(null, MockLayout.instance.lastPanelProcessed);
+  }
+
+  public void testCopyEvent() throws Exception
+  {
+    MockOS os = new MockOS();
+    os.setPrimaryModifier(KeyEvent.SHIFT_DOWN_MASK);
+    Context.instance().os = os;
+
+    Component receiver = new JPanel();
+
+    KeyEvent e1 = new KeyEvent(receiver, 1, 2, KeyEvent.SHIFT_DOWN_MASK, 'c', 'c');
+    assertEquals(true, panel.isCopyKeyEvent(e1));
+
+    KeyEvent e2 = new KeyEvent(receiver, 1, 2, KeyEvent.CTRL_DOWN_MASK, 'c', 'c');
+    assertEquals(false, panel.isCopyKeyEvent(e2));
+
+    KeyEvent e3 = new KeyEvent(receiver, 1, 2, KeyEvent.SHIFT_DOWN_MASK, 'a', 'a');
+    assertEquals(false, panel.isCopyKeyEvent(e3));
+
+    KeyEvent e4 = new KeyEvent(receiver, 1, 2, KeyEvent.SHIFT_DOWN_MASK, 'x', 'x');
+    assertEquals(true, panel.isCopyKeyEvent(e4));
   }
 }
 
