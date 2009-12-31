@@ -14,10 +14,10 @@ import limelight.ui.api.Scene;
 import limelight.util.*;
 
 import java.awt.*;
-import java.awt.font.FontRenderContext;
-import java.awt.font.LineBreakMeasurer;
-import java.awt.font.TextAttribute;
-import java.awt.font.TextLayout;
+import java.awt.datatransfer.StringSelection;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
+import java.awt.font.*;
 import java.awt.geom.AffineTransform;
 import java.text.AttributedCharacterIterator;
 import java.text.AttributedString;
@@ -37,6 +37,11 @@ public class TextPanel extends BasePanel implements StyleObserver
 
   private LinkedList<TextLayout> lines;
   private List<StyledString> textChunks;
+
+  public Point endSelectionPoint;
+  public Point startSelectionPoint;
+  public LinkedList<String> actualLineTexts;
+  private StringSelection currentSelection;
 
   //TODO MDM panel is not really needed here.  It's the same as parent.
   public TextPanel(PropablePanel panel, String text)
@@ -58,7 +63,7 @@ public class TextPanel extends BasePanel implements StyleObserver
       markAsNeedingLayout();
     this.text = text;
     if(differentText)
-    {      
+    {
       markAsNeedingLayout();
       propagateSizeChangeUp(getParent());
       getParent().markAsNeedingLayout();
@@ -73,18 +78,35 @@ public class TextPanel extends BasePanel implements StyleObserver
   public void paintOn(Graphics2D graphics)
   {
     graphics.setColor(getTextColorFromStyle(getStyle()));
-    float y = 0;
     if(lines == null)
+    {
       return;
+    }
     synchronized(this)
     {
-      for(TextLayout textLayout : lines)
+      float y = 0;
+      boolean firstEndpointDrawn = false;
+      boolean lastEndpointDrawn = false;
+
+      StringBuffer highlightedText = new StringBuffer();
+
+      for(int lineIndex = 0; lineIndex < lines.size(); lineIndex++)
       {
-        y += textLayout.getAscent();
-        int x = getStyle().getCompiledHorizontalAlignment().getX((int)widthOf(textLayout), new Box(0, 0, getWidth(), getHeight()));
-        textLayout.draw(graphics, x, y);
-        y += textLayout.getDescent() + textLayout.getLeading();
+        LineProcessor lineProcessor = new LineProcessor(this, graphics, y, firstEndpointDrawn, lastEndpointDrawn, highlightedText, lineIndex).invoke();
+        firstEndpointDrawn = lineProcessor.isFirstEndpointDrawn();
+        lastEndpointDrawn = lineProcessor.isLastEndpointDrawn();
+        y = lineProcessor.getY();
       }
+
+      setSelection(highlightedText);
+    }
+  }
+
+  private void setSelection(StringBuffer highlightedText)
+  {
+    if (!highlightedText.toString().equals(""))
+    {
+      currentSelection = new StringSelection(highlightedText.toString());
     }
   }
 
@@ -134,14 +156,12 @@ public class TextPanel extends BasePanel implements StyleObserver
       LinkedList<StyledText> styledParagraph = parser.parse(text);
 
       Font font = getFontFromStyle(getStyle());
-      Font defaultFont = font;
       Color color = getTextColorFromStyle(getStyle());
-      Color defaultColor = color;
 
       textChunks = new LinkedList<StyledString>();
       for (StyledText styledLine : styledParagraph)
       {
-        addTextChunk(defaultFont, defaultColor, styledLine);
+        addTextChunk(font, color, styledLine);
       }
       closeParagraph();
       addLines();
@@ -221,8 +241,13 @@ public class TextPanel extends BasePanel implements StyleObserver
     List<Integer> newlineLocations = getNewlineLocations(styledTextIterator);
 
     LineBreakMeasurer lbm = new LineBreakMeasurer(styledTextIterator, getRenderContext());
+
     int currentNewline = 0;
     int end = styledTextIterator.getEndIndex();
+
+    actualLineTexts = new LinkedList<String>();
+    int textPosition = 0;
+
     while (lbm.getPosition() < end)
     {
       boolean shouldEndLine = false;
@@ -230,20 +255,60 @@ public class TextPanel extends BasePanel implements StyleObserver
       while(!shouldEndLine)
       {
         float width1 = (float) consumableArea.width;
+        textPosition = lbm.getPosition();
         TextLayout layout = lbm.nextLayout(width1, newlineLocations.get(currentNewline) + 1, false);
 
+
         if (layout != null)
+        {
           lines.add(layout);
+        }
         else
+        {
           shouldEndLine = true;
+        }
 
         if (lbm.getPosition() == newlineLocations.get(currentNewline) + 1)
+        {
           currentNewline += 1;
+        }
 
         if (lbm.getPosition() == styledTextIterator.getEndIndex())
+        {
           shouldEndLine = true;
+        }
+
+
+        String lineText = substringAttributed(aText, textPosition, lbm.getPosition());
+        actualLineTexts.add(lineText);
       }
     }
+  }
+
+  private String substringAttributed(AttributedString aText, int startPosition, int endPosition)
+  {
+    AttributedCharacterIterator iterator = aText.getIterator();
+    boolean inRange = false;
+    StringBuffer buf = new StringBuffer();
+
+    for (char c = iterator.first(); c != AttributedCharacterIterator.DONE; c = iterator.next())
+    {
+      if (iterator.getIndex() == startPosition)
+      {
+        inRange = true;
+      }
+      else if (iterator.getIndex() == endPosition)
+      {
+        inRange = false;
+      }
+
+      if (inRange)
+      {
+        buf.append(c);
+      }
+    }
+
+    return buf.toString();
   }
 
   private List<Integer> getNewlineLocations(AttributedCharacterIterator styledTextIterator)
@@ -299,7 +364,7 @@ public class TextPanel extends BasePanel implements StyleObserver
     if(staticFontRenderingContext == null)
     {
       AffineTransform affineTransform = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration().getDefaultTransform();
-      staticFontRenderingContext = new FontRenderContext(affineTransform, true, false);  
+      staticFontRenderingContext = new FontRenderContext(affineTransform, true, false);
     }
     return staticFontRenderingContext;
   }
@@ -320,7 +385,7 @@ public class TextPanel extends BasePanel implements StyleObserver
     }
   }
 
-  private double widthOf(TextLayout layout)
+  public double widthOf(TextLayout layout)
   {
     return layout.getBounds().getWidth() + layout.getBounds().getX();
   }
@@ -373,6 +438,65 @@ public class TextPanel extends BasePanel implements StyleObserver
     return lines;
   }
 
+  public void styleChanged(StyleDescriptor descriptor, StyleAttribute value)
+  {
+    markAsNeedingLayout();
+    getParent().markAsNeedingLayout();
+    propagateSizeChangeDown();
+    propagateSizeChangeUp(getParent().getParent());
+  }
+
+  @Override
+  public void mousePressed(MouseEvent e)
+  {
+    super.mousePressed(e);
+    startSelectionPoint = translatedEvent(e).getPoint();
+    endSelectionPoint = new Point(startSelectionPoint);
+  }
+
+  @Override
+  public void mouseDragged(MouseEvent e)
+  {
+    super.mouseDragged(e);
+    handleEndPoint(e);
+  }
+
+  @Override
+  public void mouseReleased(MouseEvent e)
+  {
+    super.mouseReleased(e);
+    handleEndPoint(e);
+  }
+
+  @Override
+  public void mouseEntered(MouseEvent e)
+  {
+    if (getRoot().getCursor().getType() == Cursor.DEFAULT_CURSOR)
+      getRoot().setCursor(Cursor.getPredefinedCursor(Cursor.TEXT_CURSOR));
+  }
+
+  @Override
+  public void mouseExited(MouseEvent e)
+  {
+    if (getRoot().getCursor().getType() == Cursor.TEXT_CURSOR)
+      getRoot().setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+  }
+
+  @Override
+  public void keyPressed(KeyEvent e)
+  {
+    if (isCopyKeyEvent(e) && currentSelection != null)
+    {
+      Toolkit.getDefaultToolkit().getSystemClipboard().setContents(currentSelection, currentSelection);
+    }
+  }
+
+  private void handleEndPoint(MouseEvent e)
+  {
+    endSelectionPoint = translatedEvent(e).getPoint();
+    repaint();
+  }
+
   protected class StyledString
   {
     protected String text;
@@ -397,11 +521,4 @@ public class TextPanel extends BasePanel implements StyleObserver
     }
   }
 
-  public void styleChanged(StyleDescriptor descriptor, StyleAttribute value)
-  {
-    markAsNeedingLayout();
-    getParent().markAsNeedingLayout();
-    propagateSizeChangeDown();
-    propagateSizeChangeUp(getParent().getParent());
-  }
 }

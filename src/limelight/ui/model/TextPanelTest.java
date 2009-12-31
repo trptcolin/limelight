@@ -6,18 +6,13 @@ package limelight.ui.model;
 import junit.framework.TestCase;
 import limelight.styles.Style;
 import limelight.styles.FlatStyle;
-import limelight.styles.abstrstyling.ColorAttribute;
 import limelight.ui.api.MockScene;
 
 import javax.swing.*;
 import java.awt.font.TextLayout;
-import java.awt.font.FontRenderContext;
-import java.awt.geom.AffineTransform;
 import java.awt.*;
-import java.text.AttributedCharacterIterator;
 import java.util.List;
 import java.util.ArrayList;
-import java.util.regex.Matcher;
 
 public class TextPanelTest extends TestCase
 {
