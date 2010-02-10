@@ -43,6 +43,8 @@ public class TextPanel extends BasePanel implements StyleObserver
   public LinkedList<String> actualLineTexts;
   private StringSelection currentSelection;
 
+  private TextRenderer textRenderer;
+
   //TODO MDM panel is not really needed here.  It's the same as parent.
   public TextPanel(PropablePanel panel, String text)
   {
@@ -84,27 +86,25 @@ public class TextPanel extends BasePanel implements StyleObserver
     }
     synchronized(this)
     {
-      float y = 0;
-      boolean firstEndpointDrawn = false;
-      boolean lastEndpointDrawn = false;
-
-      StringBuffer highlightedText = new StringBuffer();
-
-      for(int lineIndex = 0; lineIndex < lines.size(); lineIndex++)
+      if(textRenderer != null && textRenderer.isSelected() && !textRenderer.isSelectionUpdated())
       {
-        LineProcessor lineProcessor = new LineProcessor(this, graphics, y, firstEndpointDrawn, lastEndpointDrawn, highlightedText, lineIndex).invoke();
-        firstEndpointDrawn = lineProcessor.isFirstEndpointDrawn();
-        lastEndpointDrawn = lineProcessor.isLastEndpointDrawn();
-        y = lineProcessor.getY();
+        textRenderer.renderWithSelection(this, graphics);
+        setSelection(textRenderer.getHighlightedText());
       }
-
-      setSelection(highlightedText);
+      else
+      {
+        textRenderer = new TextRenderer(this, graphics);
+        textRenderer.render();
+        setSelection(textRenderer.getHighlightedText());
+        textRenderer.setSelectionUpdated(false);
+        markAsDirty();
+      }
     }
   }
 
   private void setSelection(StringBuffer highlightedText)
   {
-    if (!highlightedText.toString().equals(""))
+    if (highlightedText != null && !highlightedText.toString().equals(""))
     {
       currentSelection = new StringSelection(highlightedText.toString());
     }
@@ -378,16 +378,11 @@ public class TextPanel extends BasePanel implements StyleObserver
       for(TextLayout layout : lines)
       {
         consumedHeight += (layout.getAscent() + layout.getDescent() + layout.getLeading());
-        double lineWidth = widthOf(layout);
+        double lineWidth = TextRenderer.widthOf(layout);
         if(lineWidth > consumedWidth)
           consumedWidth = lineWidth;
       }
     }
-  }
-
-  public double widthOf(TextLayout layout)
-  {
-    return layout.getBounds().getWidth() + layout.getBounds().getX();
   }
 
   public void setGraphics(Graphics graphics)
@@ -485,16 +480,38 @@ public class TextPanel extends BasePanel implements StyleObserver
   @Override
   public void keyPressed(KeyEvent e)
   {
-    if (isCopyKeyEvent(e) && currentSelection != null)
+    if (EventListener.isSelectAllEvent(e))
     {
-      Toolkit.getDefaultToolkit().getSystemClipboard().setContents(currentSelection, currentSelection);
+      int x = (int) (getBoundingBox().getX());
+      int y = (int) (getBoundingBox().getY());
+      startSelectionPoint = new Point(x, y);
+      endSelectionPoint = new Point(x + (int) (getBoundingBox().getWidth()), y + (int) (getBoundingBox().getHeight()));
+
+      textRenderer.updateSelection();
+      markAsDirty();
     }
   }
 
   private void handleEndPoint(MouseEvent e)
   {
     endSelectionPoint = translatedEvent(e).getPoint();
-    repaint();
+
+    textRenderer.updateSelection();
+    markAsDirty();
+  }
+
+  public void unselect()
+  {
+    startSelectionPoint = null;
+    endSelectionPoint = null;
+    currentSelection = null;
+    textRenderer.updateSelection();
+    markAsDirty();
+  }
+
+  public StringSelection getCurrentSelection()
+  {
+    return currentSelection;
   }
 
   protected class StyledString

@@ -8,20 +8,22 @@ import java.awt.font.TextLayout;
 
 public class LineProcessor
 {
-  private Graphics2D graphics;
-  private float y;
-  private boolean firstEndpointDrawn;
-  private boolean lastEndpointDrawn;
-  private StringBuffer highlightedText;
-  private int lineIndex;
-  private int x;
-  private TextLayout textLayout;
-  private Rectangle rect;
-  private TextPanel textPanel;
+  protected Graphics2D graphics;
+  protected int y;
+  protected boolean firstEndpointDrawn;
+  protected boolean lastEndpointDrawn;
+  protected StringBuffer highlightedText;
+  protected int lineIndex;
+  protected int x;
+  protected TextLayout textLayout;
+  protected Rectangle rect;
+  protected TextRenderer textRenderer;
 
-  public LineProcessor(TextPanel textPanel, Graphics2D graphics, float y, boolean firstEndpointDrawn, boolean lastEndpointDrawn, StringBuffer highlightedText, int lineIndex)
+  protected int charactersDrawn;
+
+  public LineProcessor(TextRenderer textRenderer, Graphics2D graphics, int y, boolean firstEndpointDrawn, boolean lastEndpointDrawn, StringBuffer highlightedText, int lineIndex, int charactersDrawn)
   {
-    this.textPanel = textPanel;
+    this.textRenderer = textRenderer;
     this.graphics = graphics;
     this.y = y;
     this.firstEndpointDrawn = firstEndpointDrawn;
@@ -29,12 +31,14 @@ public class LineProcessor
     this.highlightedText = highlightedText;
     this.lineIndex = lineIndex;
 
-    this.textLayout = textPanel.getLines().get(lineIndex);
-    this.x = textPanel.getStyle().getCompiledHorizontalAlignment().getX((int) textPanel.widthOf(textLayout), new Box(0, 0, textPanel.getWidth(), textPanel.getHeight()));
-    this.rect = new Rectangle(x, (int) this.y, textPanel.getWidth(), (int) (textLayout.getBounds().getHeight()));
+    this.textLayout = textRenderer.getLines().get(lineIndex);
+    this.x = textRenderer.getStyle().getCompiledHorizontalAlignment().getX((int) TextRenderer.widthOf(textLayout), new Box(0, 0, textRenderer.getWidth(), textRenderer.getHeight()));
+    this.rect = new Rectangle(x, (int) this.y, textRenderer.getWidth(), Math.round(textLayout.getAscent() + textLayout.getDescent() + textLayout.getLeading()));
+    
+    this.charactersDrawn = charactersDrawn;
   }
 
-  public float getY()
+  public int getY()
   {
     return y;
   }
@@ -60,30 +64,19 @@ public class LineProcessor
 
     textLayout.draw(graphics, x, y);
     y += textLayout.getDescent() + textLayout.getLeading();
-    return this;
-  }
-
-  public LineProcessor invokeNoDrawing()
-  {
-    y += textLayout.getAscent();
-
-    if (isSelected())
-    {
-      drawHighlight(graphics, y, x, highlightForLine());
-    }
-
-    y += textLayout.getDescent() + textLayout.getLeading();
+    charactersDrawn += textLayout.getCharacterCount();
     return this;
   }
 
   private Shape highlightForLine()
   {
     Shape highlight;
-    if (rect.contains(textPanel.startSelectionPoint) && rect.contains(textPanel.endSelectionPoint))
+
+    if(containsStartAndEnd())
     {
       highlight = processMiddleOfLine();
     }
-    else if (rect.contains(textPanel.endSelectionPoint) || rect.contains(textPanel.startSelectionPoint))
+    else if (containsStartOrEnd())
     {
       highlight = processEndOfLine();
     }
@@ -94,55 +87,31 @@ public class LineProcessor
     return highlight;
   }
 
-  private boolean isSelected()
+  public boolean containsStartAndEnd()
   {
-    return textPanel.startSelectionPoint != null && textPanel.endSelectionPoint != null && ((firstEndpointDrawn && !lastEndpointDrawn) || (rect.contains(textPanel.startSelectionPoint) || rect.contains(textPanel.endSelectionPoint)));
+    return (rect.contains(textRenderer.startSelectionPoint) && rect.contains(textRenderer.endSelectionPoint));
   }
 
-  private Shape processFullLine()
+  protected boolean containsStartOrEnd()
   {
-    Shape highlight;// full line
-    highlight = textLayout.getLogicalHighlightShape(0, textLayout.getCharacterCount());
-    highlightedText.append(textPanel.actualLineTexts.get(lineIndex).substring(0, textLayout.getCharacterCount()));
-    return highlight;
+    return rect.contains(textRenderer.endSelectionPoint) || rect.contains(textRenderer.startSelectionPoint);
   }
 
-  private Shape processEndOfLine()
+  protected boolean isSelected()
   {
-    Shape highlight;
+    return textRenderer.startSelectionPoint != null &&
+            textRenderer.endSelectionPoint != null &&
+            ((firstEndpointDrawn && !lastEndpointDrawn) ||
+                    rect.contains(textRenderer.startSelectionPoint) ||
+                    rect.contains(textRenderer.endSelectionPoint));
+  }
+
+  protected Shape processMiddleOfLine()
+  {
+    Shape highlight = null;// all of selection included (select middle)
     Point origin = new Point(x, (int) y);
-    TextHitInfo startHit = computeHit(textLayout, textPanel.startSelectionPoint, origin);
-    TextHitInfo endHit = computeHit(textLayout, textPanel.endSelectionPoint, origin);
-
-    TextHitInfo hit;
-    if (rect.contains(textPanel.startSelectionPoint))
-      hit = startHit;
-    else
-      hit = endHit;
-
-    if (firstEndpointDrawn)
-    {
-      // end of selection included (select from start of line)
-      highlight = textLayout.getLogicalHighlightShape(0, hit.getCharIndex());
-      highlightedText.append(textPanel.actualLineTexts.get(lineIndex).substring(0, hit.getCharIndex()));
-      lastEndpointDrawn = true;
-    }
-    else
-    {
-      // start of selection included (select from end of line)
-      highlight = textLayout.getLogicalHighlightShape(hit.getCharIndex(), textLayout.getCharacterCount());
-      highlightedText.append(textPanel.actualLineTexts.get(lineIndex).substring(hit.getCharIndex(), textLayout.getCharacterCount()));
-      firstEndpointDrawn = true;
-    }
-    return highlight;
-  }
-
-  private Shape processMiddleOfLine()
-  {
-    Shape highlight;// all of selection included (select middle)
-    Point origin = new Point(x, (int) y);
-    TextHitInfo startHit = computeHit(textLayout, textPanel.startSelectionPoint, origin);
-    TextHitInfo endHit = computeHit(textLayout, textPanel.endSelectionPoint, origin);
+    TextHitInfo startHit = computeHit(textLayout, textRenderer.startSelectionPoint, origin);
+    TextHitInfo endHit = computeHit(textLayout, textRenderer.endSelectionPoint, origin);
 
     int startIndex = startHit.getCharIndex();
     int endIndex = endHit.getCharIndex();
@@ -153,14 +122,57 @@ public class LineProcessor
       endIndex = startHit.getCharIndex();
     }
 
+    textRenderer.setStartSelectionIndex(startIndex + charactersDrawn);
+    textRenderer.setEndSelectionIndex(endIndex + charactersDrawn);
+
     highlight = textLayout.getLogicalHighlightShape(startIndex, endIndex);
-    highlightedText.append(textPanel.actualLineTexts.get(lineIndex).substring(startIndex, endIndex));
+    highlightedText.append(textRenderer.getActualLineTexts().get(lineIndex).substring(startIndex, endIndex));
     firstEndpointDrawn = true;
     lastEndpointDrawn = true;
     return highlight;
   }
+  
+  protected Shape processFullLine()
+  {
+    Shape highlight = null;// full line
+    highlight = textLayout.getLogicalHighlightShape(0, textLayout.getCharacterCount());
+    highlightedText.append(textRenderer.getActualLineTexts().get(lineIndex).substring(0, textLayout.getCharacterCount()));
+    return highlight;
+  }
 
-  private void drawHighlight(Graphics2D graphics, float y, int x, Shape highlight)
+  protected Shape processEndOfLine()
+  {
+    Shape highlight = null;
+    Point origin = new Point(x, (int) y);
+    TextHitInfo startHit = computeHit(textLayout, textRenderer.startSelectionPoint, origin);
+    TextHitInfo endHit = computeHit(textLayout, textRenderer.endSelectionPoint, origin);
+
+    TextHitInfo hit;
+    if (rect.contains(textRenderer.startSelectionPoint))
+      hit = startHit;
+    else
+      hit = endHit;
+
+    if (firstEndpointDrawn)
+    {
+      // end of selection included (select from start of line)
+      textRenderer.setEndSelectionIndex(hit.getCharIndex() + charactersDrawn);
+      highlight = textLayout.getLogicalHighlightShape(0, hit.getCharIndex());
+      highlightedText.append(textRenderer.getActualLineTexts().get(lineIndex).substring(0, hit.getCharIndex()));
+      lastEndpointDrawn = true;
+    }
+    else
+    {
+      // start of selection included (select from end of line)
+      textRenderer.setStartSelectionIndex(hit.getCharIndex() + charactersDrawn);
+      highlight = textLayout.getLogicalHighlightShape(hit.getCharIndex(), textLayout.getCharacterCount());
+      highlightedText.append(textRenderer.getActualLineTexts().get(lineIndex).substring(hit.getCharIndex(), textLayout.getCharacterCount()));
+      firstEndpointDrawn = true;
+    }
+    return highlight;
+  }
+
+  protected void drawHighlight(Graphics2D graphics, float y, int x, Shape highlight)
   {
     Graphics2D g = (Graphics2D) graphics.create();
     g.translate(x, y);
@@ -168,11 +180,15 @@ public class LineProcessor
     g.fill(highlight);
   }
 
-  private TextHitInfo computeHit(TextLayout textLayout, Point point, Point origin)
+  protected TextHitInfo computeHit(TextLayout textLayout, Point point, Point origin)
   {
     float hitX = (float) (point.getX() - origin.x);
     float hitY = (float) (point.getY() - origin.x);
     return textLayout.hitTestChar(hitX, hitY);
   }
 
+  public int getCharactersDrawn()
+  {
+    return charactersDrawn;
+  }
 }

@@ -263,6 +263,23 @@ public abstract class BasePanel implements Panel
     parent.keyPressed(e);
   }
 
+  public List<TextPanel> getAllTextPanels()
+  {
+    LinkedList<TextPanel> textPanels = new LinkedList<TextPanel>();
+    for (Panel child : getChildren())
+    {
+      if(child instanceof TextPanel)
+      {
+        textPanels.add((TextPanel) child);
+      }
+      else if (child instanceof BasePanel)
+      {
+        textPanels.addAll(((BasePanel) child).getAllTextPanels());
+      }
+    }
+    return textPanels;
+  }
+
   public void keyReleased(KeyEvent e)
   {
     parent.keyReleased(e);
@@ -522,10 +539,4 @@ public abstract class BasePanel implements Panel
     }
   }
 
-  public boolean isCopyKeyEvent(KeyEvent e)
-  {
-    boolean hasPrimaryModifierDown = Context.instance().os.hasPrimaryModifierDown(e);
-    char keyChar = e.getKeyChar();
-    return hasPrimaryModifierDown && (keyChar == 'c' || keyChar == 'x');
-  }
 }

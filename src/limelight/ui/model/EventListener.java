@@ -3,10 +3,17 @@
 
 package limelight.ui.model;
 
+import limelight.Context;
 import limelight.ui.Panel;
 
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.StringSelection;
+import java.awt.datatransfer.UnsupportedFlavorException;
 import java.awt.event.*;
 import java.awt.*;
+import java.io.IOException;
+import java.util.LinkedList;
+import java.util.List;
 
 public class EventListener implements MouseListener, MouseMotionListener, MouseWheelListener, KeyListener
 {
@@ -32,6 +39,13 @@ public class EventListener implements MouseListener, MouseMotionListener, MouseW
   public void mousePressed(MouseEvent e)
   {
     pressedPanel = panelFor(e.getPoint());
+    if (pressedPanel instanceof TextPanel)
+    {
+      for (TextPanel textPanel : getAllTextPanels())
+      {
+        textPanel.unselect();
+      }
+    }
     pressedPanel.mousePressed(e);
   }
 
@@ -120,17 +134,85 @@ public class EventListener implements MouseListener, MouseMotionListener, MouseW
   {
     if (pressedPanel != null)
       pressedPanel.keyTyped(e);
+    panel.keyTyped(e);
   }
 
   public void keyPressed(KeyEvent e)
   {
-    if (pressedPanel != null)
-      pressedPanel.keyPressed(e);
+    if (isSelectAllEvent(e))
+    {
+      for (TextPanel textPanel : getAllTextPanels())
+      {
+        textPanel.keyPressed(e);
+      }
+    }
+    else if (isCopyKeyEvent(e))
+    {
+      StringBuffer selectionText = new StringBuffer();
+      for (TextPanel textPanel : getAllTextPanels())
+      {
+        try
+        {
+          StringSelection currentSelection = textPanel.getCurrentSelection();
+          if (currentSelection != null)
+            selectionText.append((String) currentSelection.getTransferData(DataFlavor.stringFlavor));
+        }
+        catch (UnsupportedFlavorException e1)
+        {
+        }
+        catch (IOException e1)
+        {
+        }
+      }
+      StringSelection selection = new StringSelection(selectionText.toString());
+      Toolkit.getDefaultToolkit().getSystemClipboard().setContents(selection, selection);
+    }
+    else
+    {
+      if (pressedPanel != null)
+        pressedPanel.keyPressed(e);
+    }
   }
 
   public void keyReleased(KeyEvent e)
   {
     if (pressedPanel != null)
       pressedPanel.keyReleased(e);
+    panel.keyReleased(e);
   }
+
+  public List<TextPanel> getAllTextPanels()
+  {
+    LinkedList<TextPanel> textPanels = new LinkedList<TextPanel>();
+    if (panel == null || panel.getRoot() == null)
+      return textPanels;
+
+    for (Panel child : panel.getRoot().getChildren())
+    {
+      if (child instanceof BasePanel)
+      {
+        for (TextPanel textPanel : ((BasePanel) child).getAllTextPanels())
+        {
+          textPanels.add(textPanel);
+        }
+      }
+    }
+    return textPanels;
+  }
+
+  public static boolean isSelectAllEvent(KeyEvent e)
+  {
+    boolean hasPrimaryModifierDown = Context.instance().os.hasPrimaryModifierDown(e);
+    char keyChar = e.getKeyChar();
+    return hasPrimaryModifierDown && (keyChar == 'a');
+  }
+
+  public static boolean isCopyKeyEvent(KeyEvent e)
+  {
+    boolean hasPrimaryModifierDown = Context.instance().os.hasPrimaryModifierDown(e);
+    char keyChar = e.getKeyChar();
+    return hasPrimaryModifierDown && (keyChar == 'c' || keyChar == 'x');
+  }
+  
+  
 }

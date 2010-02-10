@@ -722,6 +722,7 @@ public class BasePanelTest extends TestCase
     assertEquals(null, MockLayout.instance.lastPanelProcessed);
   }
 
+  // TODO: CWJ move test to EventListener
   public void testCopyEvent() throws Exception
   {
     MockOS os = new MockOS();
@@ -731,16 +732,16 @@ public class BasePanelTest extends TestCase
     Component receiver = new JPanel();
 
     KeyEvent e1 = new KeyEvent(receiver, 1, 2, KeyEvent.SHIFT_DOWN_MASK, 'c', 'c');
-    assertEquals(true, panel.isCopyKeyEvent(e1));
+    assertEquals(true, EventListener.isCopyKeyEvent(e1));
 
     KeyEvent e2 = new KeyEvent(receiver, 1, 2, KeyEvent.CTRL_DOWN_MASK, 'c', 'c');
-    assertEquals(false, panel.isCopyKeyEvent(e2));
+    assertEquals(false, EventListener.isCopyKeyEvent(e2));
 
     KeyEvent e3 = new KeyEvent(receiver, 1, 2, KeyEvent.SHIFT_DOWN_MASK, 'a', 'a');
-    assertEquals(false, panel.isCopyKeyEvent(e3));
+    assertEquals(false, EventListener.isCopyKeyEvent(e3));
 
     KeyEvent e4 = new KeyEvent(receiver, 1, 2, KeyEvent.SHIFT_DOWN_MASK, 'x', 'x');
-    assertEquals(true, panel.isCopyKeyEvent(e4));
+    assertEquals(true, EventListener.isCopyKeyEvent(e4));
   }
 }
 
